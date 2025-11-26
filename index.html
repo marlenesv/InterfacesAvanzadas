@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>TechLens AR | Equipo 7</title>
+    <title>TechLens AR | Línea del Tiempo Tecnológica</title>
     
     <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
@@ -29,7 +29,7 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            z-index: 9999; /* Encima de todo */
+            z-index: 9999;
             text-align: center;
             padding: 20px;
             transition: opacity 0.8s ease;
@@ -80,15 +80,66 @@
             transform: translateX(-50%);
             width: 85%;
             max-width: 380px;
-            background: rgba(255, 255, 255, 0.90);
-            backdrop-filter: blur(20px); /* Efecto vidrio Apple */
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
             border-radius: 24px;
             padding: 30px;
             box-shadow: 0 20px 50px rgba(0,0,0,0.1);
-            display: none; /* Se oculta hasta detectar marcador */
+            display: none;
             z-index: 5000;
             border: 1px solid rgba(255,255,255,0.8);
+        }
+
+        /* --- BARRA DE PROGRESO (LÍNEA DEL TIEMPO) --- */
+        .timeline-container {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 85%;
+            max-width: 380px;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 15px 20px;
+            z-index: 4000;
+            display: none;
+        }
+
+        .timeline-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .timeline-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .timeline-counter {
+            font-size: 0.8rem;
+            color: #666;
+        }
+
+        .timeline-bar {
+            width: 100%;
+            height: 6px;
+            background: rgba(0,0,0,0.1);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .timeline-progress {
+            height: 100%;
+            background: linear-gradient(90deg, #00c853, #00e676);
+            border-radius: 3px;
+            transition: width 0.5s ease;
+            width: 0%;
         }
 
         .tag {
@@ -117,7 +168,13 @@
             font-weight: 300;
         }
 
-        .btn-action {
+        .nav-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-nav {
+            flex: 1;
             background: transparent;
             border: 1px solid #000;
             color: #000;
@@ -129,12 +186,21 @@
             text-transform: uppercase;
             letter-spacing: 1px;
             font-weight: 600;
-            width: 100%;
         }
         
-        .btn-action:hover {
+        .btn-nav:hover {
             background: #000;
             color: white;
+        }
+
+        .btn-nav:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .btn-nav:disabled:hover {
+            background: transparent;
+            color: #000;
         }
     </style>
 </head>
@@ -143,41 +209,81 @@
 
     <div id="welcome-screen">
         <h1>TechLens AR</h1>
-        <p class="subtitle">Descubre la evolución tecnológica a través de realidad aumentada.</p>
-        <button class="btn-start" onclick="startExperience()">Iniciar Experiencia</button>
+        <p class="subtitle">Explora la evolución tecnológica a través de una línea del tiempo interactiva en realidad aumentada.</p>
+        <button class="btn-start" onclick="startExperience()">Iniciar Línea del Tiempo</button>
     </div>
 
+    <!-- Barra de progreso de la línea del tiempo -->
+    <div class="timeline-container" id="timeline-container">
+        <div class="timeline-header">
+            <span class="timeline-title">LÍNEA DEL TIEMPO TECNOLÓGICA</span>
+            <span class="timeline-counter" id="timeline-counter">1/7</span>
+        </div>
+        <div class="timeline-bar">
+            <div class="timeline-progress" id="timeline-progress"></div>
+        </div>
+    </div>
+
+    <!-- Tarjeta de información principal -->
     <div id="info-card">
-        <span class="tag" id="data-tag">Hito: 1981</span>
-        <h2 class="card-title" id="data-title">IBM PC 5150</h2>
+        <span class="tag" id="data-tag">1971</span>
+        <h2 class="card-title" id="data-title">Primer Microprocesador</h2>
         <p class="card-text" id="data-desc">
-            El equipo que definió el estándar "PC". Con procesador Intel 8088, pantalla verde y sin disco duro. ¡El inicio de la era personal!
+            Intel 4004 - El primer microprocesador comercial. Contenía 2,300 transistores y ejecutaba 60,000 operaciones por segundo.
         </p>
-        <button class="btn-action" onclick="nextData()">Siguiente Dato</button>
+        <div class="nav-buttons">
+            <button class="btn-nav" id="btn-prev" onclick="prevEvent()" disabled>Anterior</button>
+            <button class="btn-nav" id="btn-next" onclick="nextEvent()">Siguiente</button>
+        </div>
     </div>
 
     <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3;">
+
+        <a-light type="ambient" color="#FFFFFF" intensity="0.8"></a-light>
+        <a-light type="directional" color="#FFFFFF" intensity="0.8" position="2 4 3"></a-light>
+        <a-light type="point" color="#FFFFFF" intensity="0.5" position="0 3 0"></a-light>
         
         <a-assets>
+            <!-- Agregar más modelos para la línea del tiempo -->
+            <a-asset-item id="microchip-model" src="assets/models/intel4004fbx.glb"></a-asset-item>
             <a-asset-item id="pc-model" src="assets/models/pc.glb"></a-asset-item>
             <a-asset-item id="floppy-model" src="assets/models/floppy.glb"></a-asset-item>
+            <a-asset-item id="smartphone-model" src="assets/models/smartphone.glb"></a-asset-item>
+            <a-asset-item id="ai-model" src="assets/models/ai.glb"></a-asset-item>
+            <a-asset-item id="macintosh-model" src="assets/models/macintosh.glb"></a-asset-item>
+            <a-asset-item id="www-model" src="assets/models/www.glb"></a-asset-item>
+
         </a-assets>
 
         <a-marker preset="hiro" id="main-marker">
             
-            <a-entity id="entity-pc"
-                gltf-model="#pc-model" 
-                scale="0.5 0.5 0.5" 
-                rotation="0 45 0"
+            <!-- Todos los modelos, inicialmente ocultos excepto el primero -->
+            <a-entity id="entity-microchip" gltf-model="#microchip-model" scale="5 5 5" rotation="0 0 0"
+                animation="property: rotation; to: 0 360 0; loop: true; dur: 15000; easing: linear">
+            </a-entity>
+
+            <a-entity id="entity-pc" gltf-model="#pc-model" scale="0.5 0.5 0.5" rotation="0 45 0" visible="false"
                 animation="property: rotation; to: 0 405 0; loop: true; dur: 20000; easing: linear">
             </a-entity>
 
-            <a-entity id="entity-floppy"
-                gltf-model="#floppy-model" 
-                scale="3 3 3" 
-                rotation="0 0 0"
-                visible="false" 
+            <a-entity id="entity-floppy" gltf-model="#floppy-model" scale="3 3 3" rotation="0 0 0" visible="false"
                 animation="property: rotation; to: 0 360 0; loop: true; dur: 10000; easing: linear">
+            </a-entity>
+
+            <a-entity id="entity-smartphone" gltf-model="#smartphone-model" scale="0.5 0.5 0.5" rotation="0 0 0" visible="false"
+                animation="property: rotation; to: 0 360 0; loop: true; dur: 12000; easing: linear">
+            </a-entity>
+
+            <a-entity id="entity-ai" gltf-model="#ai-model" scale="1 1 1" position="0 0.1 0" rotation="0 0 0" visible="false"
+                animation="property: rotation; to: 0 360 0; loop: true; dur: 15000; easing: linear">
+            </a-entity>
+
+            <a-entity id="entity-www" gltf-model="#www-model" scale="0.03 0.03 0.03" position="0 0.1 0" rotation="0 30 0" visible="false"
+                animation="property: rotation; to: 0 360 0; loop: true; dur: 18000; easing: linear">
+            </a-entity>
+
+            <a-entity id="entity-mac" gltf-model="#macintosh-model" scale="0.03 0.03 0.03" position="0 0.1 0" rotation="0 30 0" visible="false"
+                animation="property: rotation; to: 0 360 0; loop: true; dur: 18000; easing: linear">
             </a-entity>
 
         </a-marker>
@@ -186,6 +292,62 @@
     </a-scene>
 
     <script>
+        // Base de datos de la línea del tiempo
+        const timelineData = [
+            {
+                id: 1,
+                year: "1971",
+                title: "Primer Microprocesador",
+                description: "Intel 4004 - El primer microprocesador comercial. Contenía 2,300 transistores y ejecutaba 60,000 operaciones por segundo.",
+                model: "entity-microchip"
+            },
+            {
+                id: 2,
+                year: "Años 80s",
+                title: "Disquete 3.5\"",
+                description: "La forma universal de guardar datos por décadas. Su capacidad máxima era 1.44 MB. ¡Necesitarías 2,000 de estos para guardar una sola canción moderna!",
+                model: "entity-floppy"
+            },
+            {
+                id: 3,
+                year: "1981",
+                title: "IBM PC 5150",
+                description: "El equipo que definió el estándar 'PC'. Con procesador Intel 8088, pantalla verde y sin disco duro. ¡El inicio de la era personal!",
+                model: "entity-pc"
+            },
+            {
+                id:4,
+                year: "1984",
+                title: "Apple Macintosh",
+                description: "Primera computadora popular con mouse e interfaz gráfica. 'Hello, I'm Macintosh' - cambiando para siempre cómo interactuamos con las PCs.",
+                model: "entity-mac"
+            },
+             {
+                id:5,
+                year: "1991",
+                title: "World Wide Web",
+                description:"Tim Berners-Lee inventa la web 🌐. Antes internet era solo para científicos, ahora cualquiera podía crear páginas web. El primer sitio web solo tenía texto - ¡ni una sola imagen!",
+                model: "entity-www"
+            },
+            {
+                id: 6,
+                year: "2007",
+                title: "Primer iPhone",
+                description: "Revolucionó la telefonía móvil. Pantalla táctil, internet y aplicaciones en un solo dispositivo. El inicio de la era smartphone.",
+                model: "entity-smartphone"
+            },
+            {
+                id: 7,
+                year: "Actualidad",
+                title: "Inteligencia Artificial",
+                description: "Redes neuronales y aprendizaje automático que transforman industrias completas. Desde asistentes virtuales hasta diagnósticos médicos.",
+                model: "entity-ai"
+            }
+        ];
+
+        let currentEventIndex = 0;
+        const totalEvents = timelineData.length;
+
         // 1. Función para iniciar (Quita la bienvenida)
         function startExperience() {
             const welcome = document.getElementById('welcome-screen');
@@ -198,69 +360,106 @@
         // 2. Referencias a elementos
         const marker = document.querySelector('#main-marker');
         const infoCard = document.getElementById('info-card');
+        const timelineContainer = document.getElementById('timeline-container');
+        const timelineProgress = document.getElementById('timeline-progress');
+        const timelineCounter = document.getElementById('timeline-counter');
 
         // Elementos para cambiar contenido
-        const entityPC = document.getElementById('entity-pc');
-        const entityFloppy = document.getElementById('entity-floppy');
         const tagText = document.getElementById('data-tag');
         const titleText = document.getElementById('data-title');
         const descText = document.getElementById('data-desc');
-        const buttonText = document.querySelector('.btn-action');
+        const btnPrev = document.getElementById('btn-prev');
+        const btnNext = document.getElementById('btn-next');
 
-        let currentState = 1; // 1 = PC, 2 = Floppy
-
-        // 3. Detectar marcador
+        // 3. Detectar marcadores
         marker.addEventListener('markerFound', () => {
+            showUI();
+            updateEventDisplay();
+        });
+
+        marker.addEventListener('markerLost', () => {
+            hideUI();
+        });
+
+        // 4. Funciones de navegación
+        function nextEvent() {
+            if (currentEventIndex < totalEvents - 1) {
+                currentEventIndex++;
+                updateEventDisplay();
+            }
+        }
+
+        function prevEvent() {
+            if (currentEventIndex > 0) {
+                currentEventIndex--;
+                updateEventDisplay();
+            }
+        }
+
+        // 5. Actualizar la visualización del evento actual
+        function updateEventDisplay() {
+            const currentEvent = timelineData[currentEventIndex];
+            
+            // Actualizar textos
+            tagText.innerText = currentEvent.year;
+            titleText.innerText = currentEvent.title;
+            descText.innerText = currentEvent.description;
+
+            // Actualizar modelos 3D
+            timelineData.forEach((event, index) => {
+                const entity = document.getElementById(event.model);
+                if (entity) {
+                    entity.setAttribute('visible', index === currentEventIndex);
+                }
+            });
+
+            // Actualizar botones de navegación
+            btnPrev.disabled = currentEventIndex === 0;
+            btnNext.disabled = currentEventIndex === totalEvents - 1;
+            btnNext.innerText = currentEventIndex === totalEvents - 1 ? "Final" : "Siguiente";
+
+            // Actualizar línea del tiempo
+            updateTimelineProgress();
+        }
+
+        // 6. Actualizar barra de progreso
+        function updateTimelineProgress() {
+            const progress = ((currentEventIndex + 1) / totalEvents) * 100;
+            timelineProgress.style.width = `${progress}%`;
+            timelineCounter.innerText = `${currentEventIndex + 1}/${totalEvents}`;
+        }
+
+        // 7. Mostrar/ocultar interfaz
+        function showUI() {
             infoCard.style.display = 'block';
+            timelineContainer.style.display = 'block';
+            
             // Animación suave de entrada
             requestAnimationFrame(() => {
                 infoCard.style.opacity = '0';
                 infoCard.style.transform = 'translate(-50%, 20px)';
+                timelineContainer.style.opacity = '0';
+                timelineContainer.style.transform = 'translate(-50%, -20px)';
+                
                 setTimeout(() => {
                     infoCard.style.transition = 'all 0.6s cubic-bezier(0.22, 1, 0.36, 1)';
+                    timelineContainer.style.transition = 'all 0.6s cubic-bezier(0.22, 1, 0.36, 1)';
+                    
                     infoCard.style.opacity = '1';
                     infoCard.style.transform = 'translate(-50%, 0)';
+                    timelineContainer.style.opacity = '1';
+                    timelineContainer.style.transform = 'translate(-50%, 0)';
                 }, 50);
             });
-        });
-
-        marker.addEventListener('markerLost', () => {
-            infoCard.style.display = 'none';
-        });
-
-        // 4. Función del Botón "Siguiente Dato"
-        function nextData() {
-            if (currentState === 1) {
-                // --- CAMBIAR A FLOPPY ---
-                
-                // Ocultar PC, Mostrar Floppy
-                entityPC.setAttribute('visible', 'false');
-                entityFloppy.setAttribute('visible', 'true');
-
-                // Cambiar Textos
-                tagText.innerText = "Hito: Años 80s";
-                titleText.innerText = "Disquete 3.5\"";
-                descText.innerText = "La forma universal de guardar datos por décadas. Su capacidad máxima era 1.44 MB. ¡Necesitarías 2,000 de estos para guardar una sola canción moderna!";
-                buttonText.innerText = "Volver al inicio";
-
-                currentState = 2;
-
-            } else {
-                // --- VOLVER A PC ---
-
-                // Ocultar Floppy, Mostrar PC
-                entityFloppy.setAttribute('visible', 'false');
-                entityPC.setAttribute('visible', 'true');
-
-                // Restaurar Textos
-                tagText.innerText = "Hito: 1981";
-                titleText.innerText = "IBM PC 5150";
-                descText.innerText = "El equipo que definió el estándar \"PC\". Con procesador Intel 8088, pantalla verde y sin disco duro. ¡El inicio de la era personal!";
-                buttonText.innerText = "Siguiente Dato";
-
-                currentState = 1;
-            }
         }
+
+        function hideUI() {
+            infoCard.style.display = 'none';
+            timelineContainer.style.display = 'none';
+        }
+
+        // Inicializar
+        updateTimelineProgress();
     </script>
 </body>
 </html>
