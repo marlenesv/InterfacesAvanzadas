@@ -202,6 +202,33 @@
             background: transparent;
             color: #000;
         }
+
+        .audio-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .btn-audio {
+            flex: 1;
+            background: #2196F3;
+            color: white;
+            border: none;
+            padding: 8px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.3s ease;
+        }
+
+        .btn-audio:hover {
+            opacity: 0.9;
+            transform: scale(1.05);
+        }
+
+        .btn-audio.stop {
+            background: #f44336;
+        }
     </style>
 </head>
 
@@ -231,6 +258,13 @@
         <p class="card-text" id="data-desc">
             Intel 4004 - El primer microprocesador comercial. Contenía 2,300 transistores y ejecutaba 60,000 operaciones por segundo.
         </p>
+        
+        <!-- Botones para controlar el audio -->
+        <div class="audio-controls">
+            <button class="btn-audio" onclick="readCurrentInfo()">🔄 Repetir Audio</button>
+            <button class="btn-audio stop" onclick="stopSpeech()">⏹️ Parar Audio</button>
+        </div>
+        
         <div class="nav-buttons">
             <button class="btn-nav" id="btn-prev" onclick="prevEvent()" disabled>Anterior</button>
             <button class="btn-nav" id="btn-next" onclick="nextEvent()">Siguiente</button>
@@ -348,6 +382,33 @@
         let currentEventIndex = 0;
         const totalEvents = timelineData.length;
 
+        // FUNCIONES DE TEXTO A VOZ
+        function speakText(text) {
+            // Detener cualquier audio previo
+            window.speechSynthesis.cancel();
+            
+            // Crear el objeto de speech
+            const speech = new SpeechSynthesisUtterance();
+            speech.text = text;
+            speech.volume = 1;
+            speech.rate = 0.9;  // Velocidad (0.1 - 10)
+            speech.pitch = 1;   // Tono (0 - 2)
+            speech.lang = 'es-ES';  // Español
+            
+            // Hablar
+            window.speechSynthesis.speak(speech);
+        }
+
+        function stopSpeech() {
+            window.speechSynthesis.cancel();
+        }
+
+        function readCurrentInfo() {
+            const currentEvent = timelineData[currentEventIndex];
+            const textToSpeak = `${currentEvent.title}. ${currentEvent.description}`;
+            speakText(textToSpeak);
+        }
+
         // 1. Función para iniciar (Quita la bienvenida)
         function startExperience() {
             const welcome = document.getElementById('welcome-screen');
@@ -379,6 +440,8 @@
 
         marker.addEventListener('markerLost', () => {
             hideUI();
+            //Que se detenga el audio cuando se pierde el marcador
+            stopSpeech();
         });
 
         // 4. Funciones de navegación
@@ -417,6 +480,12 @@
             btnPrev.disabled = currentEventIndex === 0;
             btnNext.disabled = currentEventIndex === totalEvents - 1;
             btnNext.innerText = currentEventIndex === totalEvents - 1 ? "Final" : "Siguiente";
+
+            // Leer la info en voz alta
+            setTimeout(() => {
+                const textToSpeak = `${currentEvent.title}. ${currentEvent.description}`;
+                speakText(textToSpeak);
+            }, 800);
 
             // Actualizar línea del tiempo
             updateTimelineProgress();
