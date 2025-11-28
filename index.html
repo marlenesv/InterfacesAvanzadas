@@ -430,6 +430,12 @@
         });
 
         function startApp() {
+            //Reproduce silencio al hacer clic para desbloquear audio en iPhone/Android
+
+            const silentUtterance = new SpeechSynthesisUtterance("");
+            silentUtterance.volume = 0;
+            window.speechSynthesis.speak(silentUtterance);
+
             welcomeScreen.style.opacity = '0';
             setTimeout(() => {
                 welcomeScreen.style.display = 'none';
